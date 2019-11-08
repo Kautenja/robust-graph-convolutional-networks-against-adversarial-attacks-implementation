@@ -1,2 +1,3 @@
-# robust-graph-convolutional-networks-against-adversarial-attacks-implementation
-An implementation of the paper "Robust Graph Convolutional Networks Against Adversarial Attacks"
+# Robust Graph Convolutional Networks Against Adversarial Attacks (Implementation)
+
+This repository implements the paper _Robust Graph Convolutional Networks Against Adversarial Attacks_.
