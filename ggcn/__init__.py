@@ -7,7 +7,7 @@ Reference:
     URL: https://doi.org/10.1145/3292500.3330851
 
 """
-from .gaussian_graph_convolution import GaussianGraphConvolution
+from .ggcl import GaussianGraphConvolution
 
 
 # explicitly define the outward facing API of this package

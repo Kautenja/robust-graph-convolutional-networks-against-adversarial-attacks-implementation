@@ -25,23 +25,24 @@ class GaussianGraphConvolution(Layer):
 
     """
 
-    def __init__(self, units,
+    def __init__(self, units: int, num_nodes: int,
+        is_first: bool = False,
         support: int = 1,
         activation: any = None,
-        use_bias: bool = True,
+        mean_initializer: any = 'zeros',
+        variance_initializer: any = 'zeros',
         kernel_initializer: any = 'glorot_uniform',
-        bias_initializer: any = 'zeros',
         kernel_regularizer: any = None,
-        bias_regularizer: any = None,
-        activity_regularizer: any = None,
         kernel_constraint: any = None,
-        bias_constraint: any = None,
+        activity_regularizer: any = None,
         **kwargs
     ):
         """
         TODO.
 
         Args:
+            units: the number of weights
+            num_nodes: the number of nodes in the graph
             TODO
 
         Returns:
@@ -54,22 +55,21 @@ class GaussianGraphConvolution(Layer):
         # TODO
         # self.input_spec = InputSpec(ndim=4)
         self.units = units
+        self.num_nodes = num_nodes
+        self.is_first = is_first
         self.activation = activations.get(activation)
-        self.use_bias = use_bias
+        self.mean_initializer = initializers.get(mean_initializer)
+        self.variance_initializer = initializers.get(variance_initializer)
         self.kernel_initializer = initializers.get(kernel_initializer)
-        self.bias_initializer = initializers.get(bias_initializer)
         self.kernel_regularizer = regularizers.get(kernel_regularizer)
-        self.bias_regularizer = regularizers.get(bias_regularizer)
-        self.activity_regularizer = regularizers.get(activity_regularizer)
         self.kernel_constraint = constraints.get(kernel_constraint)
-        self.bias_constraint = constraints.get(bias_constraint)
+        self.activity_regularizer = regularizers.get(activity_regularizer)
         self.supports_masking = True
         if support < 1:
             raise ValueError('support must be >= 1')
         self.support = support
         # setup model variables
         self.kernel = None
-        self.bias = None
 
     def compute_output_shape(self, input_shape):
         """
@@ -101,26 +101,55 @@ class GaussianGraphConvolution(Layer):
         assert len(features_shape) == 2
         input_dim = features_shape[1]
 
+        # self.mean = self.add_weight(
+        #     shape=(self.num_nodes, self.units),
+        #     name='mean',
+        #     initializer=self.mean_initializer,
+        #     trainable=True)
+        # self.variance = self.add_weight(
+        #     shape=(self.num_nodes, self.units),
+        #     name='variance',
+        #     initializer=self.variance_initializer,
+        #     trainable=True)
+
         self.kernel = self.add_weight(
             shape=(input_dim * self.support, self.units),
             initializer=self.kernel_initializer,
             name='kernel',
             regularizer=self.kernel_regularizer,
-            constraint=self.kernel_constraint
-        )
-        if self.use_bias:
-            self.bias = self.add_weight(
-                shape=(self.units,),
-                initializer=self.bias_initializer,
-                name='bias',
-                regularizer=self.bias_regularizer,
-                constraint=self.bias_constraint
-            )
-        else:
-            self.bias = None
+            constraint=self.kernel_constraint)
+
         # TODO: set input specification for th layer
         # self.input_spec = InputSpec(ndim=4, axes={'channel_axis': input_dim})
         self.built = True
+
+    def _call_first(self, inputs):
+        """
+        """
+        features = inputs[0]
+        basis = inputs[1:]
+
+        supports = list()
+        for i in range(self.support):
+            supports.append(K.dot(basis[i], features))
+        supports = K.concatenate(supports, axis=1)
+        output = K.dot(supports, self.kernel)
+
+        return self.activation(output)
+
+    def _call_generic(self, inputs):
+        """
+        """
+        features = inputs[0]
+        basis = inputs[1:]
+
+        supports = list()
+        for i in range(self.support):
+            supports.append(K.dot(basis[i], features))
+        supports = K.concatenate(supports, axis=1)
+        output = K.dot(supports, self.kernel)
+
+        return self.activation(output)
 
     def call(self, inputs):
         """
@@ -133,34 +162,23 @@ class GaussianGraphConvolution(Layer):
             the output tensor from the pyramid pooling module
 
         """
-        features = inputs[0]
-        basis = inputs[1:]
-
-        supports = list()
-        for i in range(self.support):
-            supports.append(K.dot(basis[i], features))
-        supports = K.concatenate(supports, axis=1)
-        output = K.dot(supports, self.kernel)
-
-        if self.bias:
-            output += self.bias
-
-        return self.activation(output)
+        if self.is_first:
+            return self._call_first(inputs)
+        return self._call_generic(inputs)
 
     def get_config(self):
         """Return the configuration for building the layer."""
         config = dict(
             units=self.units,
+            num_nodes=self.num_nodes,
             support=self.support,
             activation=activations.serialize(self.activation),
-            use_bias=self.use_bias,
+            mean_initializer=initializers.serialize(self.mean_initializer),
+            variance_initializer=initializers.serialize(self.variance_initializer),
             kernel_initializer=initializers.serialize(self.kernel_initializer),
-            bias_initializer=initializers.serialize(self.bias_initializer),
             kernel_regularizer=regularizers.serialize(self.kernel_regularizer),
-            bias_regularizer=regularizers.serialize(self.bias_regularizer),
-            activity_regularizer=regularizers.serialize(self.activity_regularizer),
             kernel_constraint=constraints.serialize(self.kernel_constraint),
-            bias_constraint=constraints.serialize(self.bias_constraint)
+            activity_regularizer=regularizers.serialize(self.activity_regularizer),
         )
 
         base_config = super(GaussianGraphConvolution, self).get_config()
