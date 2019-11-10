@@ -7,10 +7,8 @@ Reference:
     URL: https://doi.org/10.1145/3292500.3330851
 
 """
-# from keras.engine.base_layer import InputSpec
 from keras.engine.topology import Layer
 from keras import activations, initializers, regularizers, constraints
-# from keras.utils import conv_utils
 import keras.backend as K
 
 
@@ -27,7 +25,6 @@ class GaussianGraphConvolution(Layer):
 
     def __init__(self, units: int, num_nodes: int,
         is_first: bool = False,
-        support: int = 1,
         activation: any = None,
         mean_initializer: any = 'zeros',
         variance_initializer: any = 'zeros',
@@ -52,8 +49,6 @@ class GaussianGraphConvolution(Layer):
         if 'input_shape' not in kwargs and 'input_dim' in kwargs:
             kwargs['input_shape'] = (kwargs.pop('input_dim'),)
         super(GaussianGraphConvolution, self).__init__(**kwargs)
-        # TODO
-        # self.input_spec = InputSpec(ndim=4)
         self.units = units
         self.num_nodes = num_nodes
         self.is_first = is_first
@@ -65,9 +60,6 @@ class GaussianGraphConvolution(Layer):
         self.kernel_constraint = constraints.get(kernel_constraint)
         self.activity_regularizer = regularizers.get(activity_regularizer)
         self.supports_masking = True
-        if support < 1:
-            raise ValueError('support must be >= 1')
-        self.support = support
         # setup model variables
         self.kernel = None
 
@@ -84,7 +76,7 @@ class GaussianGraphConvolution(Layer):
         """
         features_shape = input_shape[0]
         output_shape = (features_shape[0], self.units)
-        return output_shape  # (batch_size, output_dim)
+        return output_shape
 
     def build(self, input_shape):
         """
@@ -113,42 +105,46 @@ class GaussianGraphConvolution(Layer):
         #     trainable=True)
 
         self.kernel = self.add_weight(
-            shape=(input_dim * self.support, self.units),
+            shape=(input_dim, self.units),
             initializer=self.kernel_initializer,
             name='kernel',
             regularizer=self.kernel_regularizer,
             constraint=self.kernel_constraint)
 
-        # TODO: set input specification for th layer
-        # self.input_spec = InputSpec(ndim=4, axes={'channel_axis': input_dim})
         self.built = True
 
     def _call_first(self, inputs):
         """
+        Forward pass through the layer (assuming the inputs are vectors.
+
+        Args:
+            inputs: the input tensors to pass through the layer
+
+        Returns:
+            the output tensors from the layer
+
         """
         features = inputs[0]
-        basis = inputs[1:]
-
-        supports = list()
-        for i in range(self.support):
-            supports.append(K.dot(basis[i], features))
-        supports = K.concatenate(supports, axis=1)
-        output = K.dot(supports, self.kernel)
-
+        basis = inputs[1]
+        output = K.dot(basis, features)
+        output = K.dot(output, self.kernel)
         return self.activation(output)
 
     def _call_generic(self, inputs):
         """
+        Forward pass through the layer for generic cases.
+
+        Args:
+            inputs: the input tensors to pass through the layer
+
+        Returns:
+            the output tensors from the layer
+
         """
         features = inputs[0]
-        basis = inputs[1:]
-
-        supports = list()
-        for i in range(self.support):
-            supports.append(K.dot(basis[i], features))
-        supports = K.concatenate(supports, axis=1)
-        output = K.dot(supports, self.kernel)
-
+        basis = inputs[1]
+        output = K.dot(basis, features)
+        output = K.dot(output, self.kernel)
         return self.activation(output)
 
     def call(self, inputs):
@@ -156,10 +152,10 @@ class GaussianGraphConvolution(Layer):
         Forward pass through the layer.
 
         Args:
-            inputs: the input tensor to pass through the pyramid pooling module
+            inputs: the input tensors to pass through the layer
 
         Returns:
-            the output tensor from the pyramid pooling module
+            the output tensors from the layer
 
         """
         if self.is_first:
@@ -171,7 +167,6 @@ class GaussianGraphConvolution(Layer):
         config = dict(
             units=self.units,
             num_nodes=self.num_nodes,
-            support=self.support,
             activation=activations.serialize(self.activation),
             mean_initializer=initializers.serialize(self.mean_initializer),
             variance_initializer=initializers.serialize(self.variance_initializer),
