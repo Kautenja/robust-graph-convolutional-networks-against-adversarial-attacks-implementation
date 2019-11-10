@@ -85,6 +85,9 @@ class GaussianGraphConvolution(Layer):
         """
         features_shape = input_shape[0]
         output_shape = (features_shape[0], self.units)
+        if self.is_last:  # the last layer samples from the distribution
+            return output_shape
+        # normal layers return a mean and variance tensor
         return [output_shape, output_shape]
 
     def build(self, input_shape):
