@@ -10,7 +10,23 @@ Reference:
 from keras.engine.topology import Layer
 from keras import activations, initializers, regularizers, constraints
 import keras.backend as K
-from tensorflow.distributions import Normal
+from tensorflow import distributions
+
+
+def sample(mean, variance):
+    """
+    Sample from the given normal distribution.
+
+    Args:
+        mean: the mean values
+        variance: the variances
+
+    Returns:
+        values samples from the distribution
+
+    """
+    epsilon = distributions.Normal(K.zeros_like(mean), K.ones_like(mean)).sample()
+    return mean + epsilon * variance
 
 
 class GaussianGraphConvolution(Layer):
@@ -124,7 +140,7 @@ class GaussianGraphConvolution(Layer):
         variance = K.dot(output, self.variance_weight)
         # sample from the distribution if the last layer
         if self.is_last:
-            return self.activation(Normal(mean, variance).sample())
+            return self.activation(sample(mean, variance))
         # return the mean and variance through the activation
         return [self.activation(mean), self.activation(variance)]
 
@@ -150,7 +166,7 @@ class GaussianGraphConvolution(Layer):
         variance = K.dot(variance, self.variance_weight)
         # sample from the distribution if the last layer
         if self.is_last:
-            return self.activation(Normal(mean, variance).sample())
+            return self.activation(sample(mean, variance))
         # return the mean and variance through the activation
         return [self.activation(mean), self.activation(variance)]
 
