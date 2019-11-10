@@ -46,7 +46,9 @@ class GaussianGraphConvolution(Layer):
         attention_factor: float = 1,
         activation: any = None,
         mean_initializer: any = 'glorot_uniform',
+        mean_regularizer: any = None,
         variance_initializer: any = 'glorot_uniform',
+        variance_regularizer: any = None,
         **kwargs
     ):
         """
@@ -72,7 +74,9 @@ class GaussianGraphConvolution(Layer):
         self.attention_factor = attention_factor
         self.activation = activations.get(activation)
         self.mean_initializer = initializers.get(mean_initializer)
+        self.mean_regularizer = regularizers.get(mean_regularizer)
         self.variance_initializer = initializers.get(variance_initializer)
+        self.variance_regularizer = regularizers.get(variance_regularizer)
         self.supports_masking = True
         # setup model variables
         self.mean_weight = None
@@ -114,11 +118,13 @@ class GaussianGraphConvolution(Layer):
         self.mean_weight = self.add_weight(
             shape=(input_dim, self.units),
             name='mean',
-            initializer=self.mean_initializer)
+            initializer=self.mean_initializer,
+            regularizer=self.mean_regularizer)
         self.variance_weight = self.add_weight(
             shape=(input_dim, self.units),
             name='variance',
-            initializer=self.variance_initializer)
+            initializer=self.variance_initializer,
+            regularizer=self.variance_regularizer)
 
         self.built = True
 
