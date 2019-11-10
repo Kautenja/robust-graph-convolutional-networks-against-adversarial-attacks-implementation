@@ -164,7 +164,7 @@ class GaussianGraphConvolution(Layer):
         # return the mean and variance through the activation
         return [self.activation(mean), self.activation(variance)]
 
-    def call(self, inputs):
+    def call(self, inputs, **kwargs):
         """
         Forward pass through the layer.
 
