@@ -8,9 +8,10 @@ Reference:
 
 """
 from .ggcl import GaussianGraphConvolution
-
+from .losses import kl_reg
 
 # explicitly define the outward facing API of this package
 __all__ = [
-    GaussianGraphConvolution.__name__
+    GaussianGraphConvolution.__name__,
+    kl_reg.__name__,
 ]
