@@ -25,9 +25,10 @@ class GaussianGraphConvolution(Layer):
 
     def __init__(self, units: int, num_nodes: int,
         is_first: bool = False,
+        attention_factor: float = 1,
         activation: any = None,
-        mean_initializer: any = 'zeros',
-        variance_initializer: any = 'zeros',
+        mean_initializer: any = 'glorot_uniform',
+        variance_initializer: any = 'glorot_uniform',
         kernel_initializer: any = 'glorot_uniform',
         kernel_regularizer: any = None,
         kernel_constraint: any = None,
@@ -40,6 +41,8 @@ class GaussianGraphConvolution(Layer):
         Args:
             units: the number of weights
             num_nodes: the number of nodes in the graph
+            is_first: whether this is the first Gaussian graph convolution layer
+            attention_factor: the attention factor ([0, 1], 1 is best)
             TODO
 
         Returns:
@@ -52,6 +55,7 @@ class GaussianGraphConvolution(Layer):
         self.units = units
         self.num_nodes = num_nodes
         self.is_first = is_first
+        self.attention_factor = attention_factor
         self.activation = activations.get(activation)
         self.mean_initializer = initializers.get(mean_initializer)
         self.variance_initializer = initializers.get(variance_initializer)
@@ -76,7 +80,7 @@ class GaussianGraphConvolution(Layer):
         """
         features_shape = input_shape[0]
         output_shape = (features_shape[0], self.units)
-        return output_shape
+        return [output_shape, output_shape]
 
     def build(self, input_shape):
         """
@@ -93,23 +97,14 @@ class GaussianGraphConvolution(Layer):
         assert len(features_shape) == 2
         input_dim = features_shape[1]
 
-        # self.mean = self.add_weight(
-        #     shape=(self.num_nodes, self.units),
-        #     name='mean',
-        #     initializer=self.mean_initializer,
-        #     trainable=True)
-        # self.variance = self.add_weight(
-        #     shape=(self.num_nodes, self.units),
-        #     name='variance',
-        #     initializer=self.variance_initializer,
-        #     trainable=True)
-
-        self.kernel = self.add_weight(
+        self.mean = self.add_weight(
             shape=(input_dim, self.units),
-            initializer=self.kernel_initializer,
-            name='kernel',
-            regularizer=self.kernel_regularizer,
-            constraint=self.kernel_constraint)
+            name='mean',
+            initializer=self.mean_initializer)
+        self.variance = self.add_weight(
+            shape=(input_dim, self.units),
+            name='variance',
+            initializer=self.variance_initializer)
 
         self.built = True
 
@@ -126,9 +121,12 @@ class GaussianGraphConvolution(Layer):
         """
         features = inputs[0]
         basis = inputs[1]
+
         output = K.dot(basis, features)
-        output = K.dot(output, self.kernel)
-        return self.activation(output)
+        mean = K.dot(output, self.mean)
+        variance = K.dot(output, self.variance)
+
+        return [self.activation(mean), self.activation(variance)]
 
     def _call_generic(self, inputs):
         """
@@ -141,11 +139,19 @@ class GaussianGraphConvolution(Layer):
             the output tensors from the layer
 
         """
-        features = inputs[0]
-        basis = inputs[1]
-        output = K.dot(basis, features)
-        output = K.dot(output, self.kernel)
-        return self.activation(output)
+        mean = inputs[0]
+        variance = inputs[1]
+        basis = inputs[2]
+        # calculate the alpha value
+        alpha = K.exp(-self.attention_factor * variance)
+
+        mean_output = K.dot(basis, (mean * alpha))
+        mean_output = K.dot(mean_output, self.mean)
+
+        variance_output = K.dot(basis, (variance * alpha**2))
+        variance_output = K.dot(variance_output, self.variance)
+
+        return [self.activation(mean_output), self.activation(variance_output)]
 
     def call(self, inputs):
         """
