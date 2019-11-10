@@ -24,17 +24,13 @@ class GaussianGraphConvolution(Layer):
 
     """
 
-    def __init__(self, units: int, num_nodes: int,
+    def __init__(self, units: int,
         is_first: bool = False,
         is_last: bool = False,
         attention_factor: float = 1,
         activation: any = None,
         mean_initializer: any = 'glorot_uniform',
         variance_initializer: any = 'glorot_uniform',
-        kernel_initializer: any = 'glorot_uniform',
-        kernel_regularizer: any = None,
-        kernel_constraint: any = None,
-        activity_regularizer: any = None,
         **kwargs
     ):
         """
@@ -42,7 +38,6 @@ class GaussianGraphConvolution(Layer):
 
         Args:
             units: the number of weights
-            num_nodes: the number of nodes in the graph
             is_first: whether this is the first Gaussian graph convolution layer
             is_last: whether this is the last Gaussian graph convolution layer
             attention_factor: the attention factor ([0, 1], 1 is best)
@@ -56,17 +51,12 @@ class GaussianGraphConvolution(Layer):
             kwargs['input_shape'] = (kwargs.pop('input_dim'),)
         super(GaussianGraphConvolution, self).__init__(**kwargs)
         self.units = units
-        self.num_nodes = num_nodes
         self.is_first = is_first
         self.is_last = is_last
         self.attention_factor = attention_factor
         self.activation = activations.get(activation)
         self.mean_initializer = initializers.get(mean_initializer)
         self.variance_initializer = initializers.get(variance_initializer)
-        self.kernel_initializer = initializers.get(kernel_initializer)
-        self.kernel_regularizer = regularizers.get(kernel_regularizer)
-        self.kernel_constraint = constraints.get(kernel_constraint)
-        self.activity_regularizer = regularizers.get(activity_regularizer)
         self.supports_masking = True
         # setup model variables
         self.mean_weight = None
@@ -183,14 +173,9 @@ class GaussianGraphConvolution(Layer):
         """Return the configuration for building the layer."""
         config = dict(
             units=self.units,
-            num_nodes=self.num_nodes,
             activation=activations.serialize(self.activation),
             mean_initializer=initializers.serialize(self.mean_initializer),
             variance_initializer=initializers.serialize(self.variance_initializer),
-            kernel_initializer=initializers.serialize(self.kernel_initializer),
-            kernel_regularizer=regularizers.serialize(self.kernel_regularizer),
-            kernel_constraint=constraints.serialize(self.kernel_constraint),
-            activity_regularizer=regularizers.serialize(self.activity_regularizer),
         )
 
         base_config = super(GaussianGraphConvolution, self).get_config()
