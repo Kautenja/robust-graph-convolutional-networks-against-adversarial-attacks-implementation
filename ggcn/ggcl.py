@@ -10,6 +10,7 @@ Reference:
 from keras.engine.topology import Layer
 from keras import activations, initializers, regularizers, constraints
 import keras.backend as K
+from tensorflow.distributions import Normal
 
 
 class GaussianGraphConvolution(Layer):
@@ -25,6 +26,7 @@ class GaussianGraphConvolution(Layer):
 
     def __init__(self, units: int, num_nodes: int,
         is_first: bool = False,
+        is_last: bool = False,
         attention_factor: float = 1,
         activation: any = None,
         mean_initializer: any = 'glorot_uniform',
@@ -42,6 +44,7 @@ class GaussianGraphConvolution(Layer):
             units: the number of weights
             num_nodes: the number of nodes in the graph
             is_first: whether this is the first Gaussian graph convolution layer
+            is_last: whether this is the last Gaussian graph convolution layer
             attention_factor: the attention factor ([0, 1], 1 is best)
             TODO
 
@@ -55,6 +58,7 @@ class GaussianGraphConvolution(Layer):
         self.units = units
         self.num_nodes = num_nodes
         self.is_first = is_first
+        self.is_last = is_last
         self.attention_factor = attention_factor
         self.activation = activations.get(activation)
         self.mean_initializer = initializers.get(mean_initializer)
@@ -65,7 +69,8 @@ class GaussianGraphConvolution(Layer):
         self.activity_regularizer = regularizers.get(activity_regularizer)
         self.supports_masking = True
         # setup model variables
-        self.kernel = None
+        self.mean_weight = None
+        self.variance_weight = None
 
     def compute_output_shape(self, input_shape):
         """
@@ -97,11 +102,11 @@ class GaussianGraphConvolution(Layer):
         assert len(features_shape) == 2
         input_dim = features_shape[1]
 
-        self.mean = self.add_weight(
+        self.mean_weight = self.add_weight(
             shape=(input_dim, self.units),
             name='mean',
             initializer=self.mean_initializer)
-        self.variance = self.add_weight(
+        self.variance_weight = self.add_weight(
             shape=(input_dim, self.units),
             name='variance',
             initializer=self.variance_initializer)
@@ -119,13 +124,15 @@ class GaussianGraphConvolution(Layer):
             the output tensors from the layer
 
         """
-        features = inputs[0]
-        basis = inputs[1]
-
+        features, basis = inputs
+        # calculate the mean and variance
         output = K.dot(basis, features)
-        mean = K.dot(output, self.mean)
-        variance = K.dot(output, self.variance)
-
+        mean = K.dot(output, self.mean_weight)
+        variance = K.dot(output, self.variance_weight)
+        # sample from the distribution if the last layer
+        if self.is_last:
+            return self.activation(Normal(mean, variance).sample())
+        # return the mean and variance through the activation
         return [self.activation(mean), self.activation(variance)]
 
     def _call_generic(self, inputs):
@@ -139,19 +146,20 @@ class GaussianGraphConvolution(Layer):
             the output tensors from the layer
 
         """
-        mean = inputs[0]
-        variance = inputs[1]
-        basis = inputs[2]
+        mean, variance, basis = inputs
         # calculate the alpha value
         alpha = K.exp(-self.attention_factor * variance)
-
-        mean_output = K.dot(basis, (mean * alpha))
-        mean_output = K.dot(mean_output, self.mean)
-
-        variance_output = K.dot(basis, (variance * alpha**2))
-        variance_output = K.dot(variance_output, self.variance)
-
-        return [self.activation(mean_output), self.activation(variance_output)]
+        # calculate the mean
+        mean = K.dot(basis, (mean * alpha))
+        mean = K.dot(mean, self.mean_weight)
+        # calculate the variance
+        variance = K.dot(basis, (variance * alpha**2))
+        variance = K.dot(variance, self.variance_weight)
+        # sample from the distribution if the last layer
+        if self.is_last:
+            return self.activation(Normal(mean, variance).sample())
+        # return the mean and variance through the activation
+        return [self.activation(mean), self.activation(variance)]
 
     def call(self, inputs):
         """
