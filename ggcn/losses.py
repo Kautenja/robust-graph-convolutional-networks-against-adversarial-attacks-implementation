@@ -11,20 +11,21 @@ from keras import backend as K
 from tensorflow import distributions
 
 
-def kl_reg(mean, variance):
+def kl_reg(mean, variance, weight: float = 5e-4):
     """
     Return the kl_regularization based on mean and variance tensors.
 
     Args:
         mean: the mean output from the first layer
         variance: the variance output from the first layer
+        weight: the weight for the loss function
 
     Returns:
         the KL-divergence between normal distribution and model distribution
     """
     identity = distributions.Normal(K.zeros_like(mean), K.ones_like(mean))
     model = distributions.Normal(mean, variance)
-    return distributions.kl_divergence(identity, model)
+    return weight * distributions.kl_divergence(identity, model)
 
 
 # explicitly define the outward facing API of this module
