@@ -45,6 +45,7 @@ class GaussianGraphConvolution(Layer):
         is_last: bool = False,
         attention_factor: float = 1,
         activation: any = None,
+        dropout: float = 0.,
         mean_initializer: any = 'glorot_uniform',
         mean_regularizer: any = None,
         variance_initializer: any = 'glorot_uniform',
@@ -73,6 +74,7 @@ class GaussianGraphConvolution(Layer):
         self.is_last = is_last
         self.attention_factor = attention_factor
         self.activation = activations.get(activation)
+        self.dropout = dropout
         self.mean_initializer = initializers.get(mean_initializer)
         self.mean_regularizer = regularizers.get(mean_regularizer)
         self.variance_initializer = initializers.get(variance_initializer)
@@ -144,11 +146,15 @@ class GaussianGraphConvolution(Layer):
         output = K.dot(basis, features)
         mean = K.dot(output, self.mean_weight)
         variance = K.dot(output, self.variance_weight)
-        # sample from the distribution if the last layer
-        if self.is_last:
+        if self.is_last:  # sample from the distribution if the last layer
             return self.activation(sample(mean, variance))
-        # return the mean and variance through the activation
-        return [self.activation(mean), self.activation(variance)]
+        # pass the mean and variance through the activation
+        mean = self.activation(mean)
+        variance = self.activation(variance)
+        if self.dropout:  # apply the dropout if enabled
+            mean = K.dropout(mean, self.dropout)
+            variance = K.dropout(variance, self.dropout)
+        return [mean, variance]
 
     def _call_generic(self, inputs):
         """
@@ -173,8 +179,13 @@ class GaussianGraphConvolution(Layer):
         # sample from the distribution if the last layer
         if self.is_last:
             return self.activation(sample(mean, variance))
-        # return the mean and variance through the activation
-        return [self.activation(mean), self.activation(variance)]
+        # pass the mean and variance through the activation
+        mean = self.activation(mean)
+        variance = self.activation(variance)
+        if self.dropout:  # apply the dropout if enabled
+            mean = K.dropout(mean, self.dropout)
+            variance = K.dropout(variance, self.dropout)
+        return [mean, variance]
 
     def call(self, inputs, **kwargs):
         """
