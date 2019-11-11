@@ -16,7 +16,7 @@ The following baselines are tested:
 
 ## Usage
 
-The [main-attack.ipynb](main-attack.ipynb) notebook contains code for training
+The [random-attack.ipynb](random-attack.ipynb) notebook contains code for training
 and evaluating the GCN and RGCN models under a non-targeted random attack.
 
 ## Results
