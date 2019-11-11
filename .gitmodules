@@ -3,4 +3,4 @@
 	url = https://github.com/Kautenja/gcn
 [submodule "vendor/keras-gcn"]
 	path = vendor/keras-gcn
-	url = https://github.com/tkipf/keras-gcn
+	url = https://github.com/Kautenja/keras-gcn
