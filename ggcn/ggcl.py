@@ -130,15 +130,7 @@ class GaussianGraphConvolution(Layer):
         output = K.dot(basis, features)
         mean = K.dot(output, self.mean_weight)
         variance = K.dot(output, self.variance_weight)
-        if self.is_last:  # sample from the distribution if the last layer
-            return self.activation(distributions.Normal(mean, variance).sample())
-        # pass the mean and variance through the activation
-        mean = self.activation(mean)
-        variance = self.activation(variance)
-        if self.dropout:  # apply the dropout if enabled
-            mean = K.dropout(mean, self.dropout)
-            variance = K.dropout(variance, self.dropout)
-        return [mean, variance]
+        return mean, variance
 
     def _call_generic(self, inputs):
         """
@@ -160,16 +152,7 @@ class GaussianGraphConvolution(Layer):
         # calculate the variance
         variance = K.dot(basis, (variance * alpha**2))
         variance = K.dot(variance, self.variance_weight)
-        # sample from the distribution if the last layer
-        if self.is_last:
-            return self.activation(distributions.Normal(mean, variance).sample())
-        # pass the mean and variance through the activation
-        mean = self.activation(mean)
-        variance = self.activation(variance)
-        if self.dropout:  # apply the dropout if enabled
-            mean = K.dropout(mean, self.dropout)
-            variance = K.dropout(variance, self.dropout)
-        return [mean, variance]
+        return mean, variance
 
     def call(self, inputs, **kwargs):
         """
@@ -182,9 +165,21 @@ class GaussianGraphConvolution(Layer):
             the output tensors from the layer
 
         """
-        if self.is_first:
-            return self._call_first(inputs)
-        return self._call_generic(inputs)
+        if self.is_first:  # convert vectors to distributions
+            mean, variance = self._call_first(inputs)
+        else:  # transform the distributions
+            mean, variance = self._call_generic(inputs)
+        # sample from the distribution if the last layer
+        if self.is_last:
+            return self.activation(distributions.Normal(mean, variance).sample())
+        # pass the mean and variance through the activation
+        mean = self.activation(mean)
+        variance = self.activation(variance)
+        # apply the dropout if enabled
+        if self.dropout:
+            mean = K.dropout(mean, self.dropout)
+            variance = K.dropout(variance, self.dropout)
+        return [mean, variance]
 
     def get_config(self):
         """Return the configuration for building the layer."""
