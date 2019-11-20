@@ -8,7 +8,7 @@ Reference:
 
 """
 from keras.engine.topology import Layer
-from keras import activations, initializers, regularizers, constraints
+from keras import activations, initializers, regularizers
 import keras.backend as K
 from tensorflow import distributions
 
@@ -28,12 +28,14 @@ class GaussianGraphConvolution(Layer):
         is_first: bool = False,
         is_last: bool = False,
         attention_factor: float = 1,
-        activation: any = None,
         dropout: float = 0.,
+        mean_activation: any = None,
         mean_initializer: any = 'glorot_uniform',
         mean_regularizer: any = None,
+        variance_activation: any = None,
         variance_initializer: any = 'glorot_uniform',
         variance_regularizer: any = None,
+        last_activation: any = None,
         **kwargs
     ):
         """
@@ -57,12 +59,14 @@ class GaussianGraphConvolution(Layer):
         self.is_first = is_first
         self.is_last = is_last
         self.attention_factor = attention_factor
-        self.activation = activations.get(activation)
         self.dropout = dropout
+        self.mean_activation = activations.get(mean_activation)
         self.mean_initializer = initializers.get(mean_initializer)
         self.mean_regularizer = regularizers.get(mean_regularizer)
+        self.variance_activation = activations.get(variance_activation)
         self.variance_initializer = initializers.get(variance_initializer)
         self.variance_regularizer = regularizers.get(variance_regularizer)
+        self.last_activation = activations.get(last_activation)
         self.supports_masking = True
         # setup model variables
         self.mean_weight = None
@@ -171,27 +175,27 @@ class GaussianGraphConvolution(Layer):
             mean, variance = self._call_generic(inputs)
         # sample from the distribution if the last layer
         if self.is_last:
-            return self.activation(distributions.Normal(mean, variance).sample())
+            return self.last_activation(distributions.Normal(mean, variance).sample())
         # pass the mean and variance through the activation
-        mean = self.activation(mean)
-        variance = self.activation(variance)
+        mean = self.mean_activation(mean)
+        variance = self.variance_activation(variance)
         # apply the dropout if enabled
         if self.dropout:
             mean = K.dropout(mean, self.dropout)
             variance = K.dropout(variance, self.dropout)
         return [mean, variance]
 
-    def get_config(self):
-        """Return the configuration for building the layer."""
-        config = dict(
-            units=self.units,
-            activation=activations.serialize(self.activation),
-            mean_initializer=initializers.serialize(self.mean_initializer),
-            variance_initializer=initializers.serialize(self.variance_initializer),
-        )
+    # def get_config(self):
+    #     """Return the configuration for building the layer."""
+    #     config = dict(
+    #         units=self.units,
+    #         activation=activations.serialize(self.activation),
+    #         mean_initializer=initializers.serialize(self.mean_initializer),
+    #         variance_initializer=initializers.serialize(self.variance_initializer),
+    #     )
 
-        base_config = super(GaussianGraphConvolution, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
+    #     base_config = super(GaussianGraphConvolution, self).get_config()
+    #     return dict(list(base_config.items()) + list(config.items()))
 
 
 # explicitly define the outward facing API of this module
