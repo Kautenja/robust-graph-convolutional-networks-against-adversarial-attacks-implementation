@@ -105,23 +105,25 @@ class GaussianGraphConvolution(Layer):
             None
 
         """
+        # setup dimensionality
         features_shape = input_shape[0]
         assert len(features_shape) == 2
         input_dim = features_shape[1]
-
+        # create a weight for the mean values
         self.mean_weight = self.add_weight(
             shape=(input_dim, self.units),
             name='mean_weight',
             initializer=self.mean_initializer,
             regularizer=self.mean_regularizer,
             constraint=self.mean_constraint)
+        # create a weight for the variance values
         self.variance_weight = self.add_weight(
             shape=(input_dim, self.units),
             name='variance_weight',
             initializer=self.variance_initializer,
             regularizer=self.variance_regularizer,
             constraint=self.variance_constraint)
-
+        # mark the layer as built
         self.built = True
 
     def _call_first(self, inputs):
