@@ -69,7 +69,7 @@ class GaussianGraphConvolution(Layer):
         """
         if 'input_shape' not in kwargs and 'input_dim' in kwargs:
             kwargs['input_shape'] = (kwargs.pop('input_dim'),)
-        super(GaussianGraphConvolution, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.units = units
         self.is_first = is_first
         self.is_last = is_last
@@ -225,8 +225,8 @@ class GaussianGraphConvolution(Layer):
             variance_constraint=constraints.serialize(self.variance_constraint),
             last_activation=activations.serialize(self.last_activation),
         )
-
-        base_config = super(GaussianGraphConvolution, self).get_config()
+        # get items from the parent class and combine them with this layer
+        base_config = super().get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
 
