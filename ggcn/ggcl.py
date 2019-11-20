@@ -41,14 +41,27 @@ class GaussianGraphConvolution(Layer):
         **kwargs
     ):
         """
-        TODO.
+        Create a new Gaussian graph convolution layer.
 
         Args:
-            units: the number of weights
-            is_first: whether this is the first Gaussian graph convolution layer
-            is_last: whether this is the last Gaussian graph convolution layer
+            units: the number of units in the layer
+            is_first: whether this is the first Gaussian graph convolution layer.
+                      If true, the inputs are just the features and graph; if
+                      false, the inputs are mean, variance, and graph
+            is_last: whether this is the last Gaussian graph convolution layer.
+                     If true, the output is sampled from the mean and variance;
+                     if false, the outputs are the mean and variance.
             attention_factor: the attention factor ([0, 1], 1 is best)
-            TODO
+            dropout: the dropout rate to apply to the mean and variance output
+            mean_activation: the activation function for the mean outputs
+            mean_initializer: the initializer for the mean weights
+            mean_regularizer: the regularize for the mean weights
+            mean_constraint: the constraint mechanism for the mean weights
+            variance_activation: the activation function for the variance outputs
+            variance_initializer: the initializer for the variance weights
+            variance_regularizer: the regularize for the variance weights
+            variance_constraint: the constraint mechanism for the variance weights
+            last_activation: the activation function to apply if is_last is true
 
         Returns:
             None
@@ -69,8 +82,8 @@ class GaussianGraphConvolution(Layer):
         self.variance_activation = activations.get(variance_activation)
         self.variance_initializer = initializers.get(variance_initializer)
         self.variance_regularizer = regularizers.get(variance_regularizer)
-        self.last_activation = activations.get(last_activation)
         self.variance_constraint = constraints.get(variance_constraint)
+        self.last_activation = activations.get(last_activation)
         self.supports_masking = True
         # setup model variables
         self.mean_weight = None
@@ -124,7 +137,7 @@ class GaussianGraphConvolution(Layer):
             regularizer=self.variance_regularizer,
             constraint=self.variance_constraint)
         # mark the layer as built
-        self.built = True
+        super().build(input_shape)
 
     def _call_first(self, inputs):
         """
@@ -190,7 +203,8 @@ class GaussianGraphConvolution(Layer):
             variance = K.dropout(variance, self.dropout)
         # sample from the distribution if the last layer
         if self.is_last:
-            return self.last_activation(distributions.Normal(mean, variance).sample())
+            dist = distributions.Normal(mean, variance)
+            return self.last_activation(dist.sample())
         return [mean, variance]
 
     def get_config(self):
@@ -204,9 +218,11 @@ class GaussianGraphConvolution(Layer):
             mean_activation=activations.serialize(self.mean_activation),
             mean_initializer=initializers.serialize(self.mean_initializer),
             mean_regularizer=regularizers.serialize(self.mean_regularizer),
+            mean_constraint=constraints.serialize(self.mean_constraint),
             variance_activation=activations.serialize(self.variance_activation),
             variance_initializer=initializers.serialize(self.variance_initializer),
             variance_regularizer=regularizers.serialize(self.mean_regularizer),
+            variance_constraint=constraints.serialize(self.variance_constraint),
             last_activation=activations.serialize(self.last_activation),
         )
 
