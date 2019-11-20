@@ -7,7 +7,7 @@ Reference:
     URL: https://doi.org/10.1145/3292500.3330851
 
 """
-from .ggcl import GaussianGraphConvolution
+from .ggc import GaussianGraphConvolution
 from .losses import kl_reg
 
 # explicitly define the outward facing API of this package
