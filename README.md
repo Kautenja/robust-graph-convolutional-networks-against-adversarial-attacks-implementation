@@ -16,8 +16,11 @@ The following baselines are tested:
 
 ## Usage
 
-The [random-attack.ipynb](random-attack.ipynb) notebook contains code for training
-and evaluating the GCN and RGCN models under a non-targeted random attack.
+The [random-attack.ipynb](random-attack.ipynb) notebook contains code for
+training and evaluating the GCN and RGCN models under a non-targeted random
+attack. [random-attack-plot.ipynb](random-attack-plot.ipynb) contains logic to
+generate the plot of noise ratio to accuracy between GCN and RGCN during a
+non-targeted random attack.
 
 ## Results
 
