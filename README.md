@@ -28,4 +28,4 @@ The plot below shows the results of the RGCN model compared to the GCN model
 under a non-targeted random attack from a ratio of noise to clean edges from 0
 to 1 in 0.1 increments.
 
-![Random Attack Results](plot.png)
+![Random Attack Results](img/plot.png)
