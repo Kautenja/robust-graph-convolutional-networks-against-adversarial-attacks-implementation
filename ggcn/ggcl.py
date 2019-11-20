@@ -8,7 +8,7 @@ Reference:
 
 """
 from keras.engine.topology import Layer
-from keras import activations, initializers, regularizers
+from keras import activations, initializers, regularizers, constraints
 import keras.backend as K
 from tensorflow import distributions
 
@@ -27,14 +27,16 @@ class GaussianGraphConvolution(Layer):
     def __init__(self, units: int,
         is_first: bool = False,
         is_last: bool = False,
-        attention_factor: float = 1,
+        attention_factor: float = 1.,
         dropout: float = 0.,
-        mean_activation: any = None,
+        mean_activation: any = 'elu',
         mean_initializer: any = 'glorot_uniform',
-        mean_regularizer: any = None,
-        variance_activation: any = None,
+        mean_regularizer: any = regularizers.l2(5e-4),
+        mean_constraint: any = None,
+        variance_activation: any = 'relu',
         variance_initializer: any = 'glorot_uniform',
-        variance_regularizer: any = None,
+        variance_regularizer: any = regularizers.l2(5e-4),
+        variance_constraint: any = constraints.NonNeg(),
         last_activation: any = None,
         **kwargs
     ):
@@ -63,10 +65,12 @@ class GaussianGraphConvolution(Layer):
         self.mean_activation = activations.get(mean_activation)
         self.mean_initializer = initializers.get(mean_initializer)
         self.mean_regularizer = regularizers.get(mean_regularizer)
+        self.mean_constraint = constraints.get(mean_constraint)
         self.variance_activation = activations.get(variance_activation)
         self.variance_initializer = initializers.get(variance_initializer)
         self.variance_regularizer = regularizers.get(variance_regularizer)
         self.last_activation = activations.get(last_activation)
+        self.variance_constraint = constraints.get(variance_constraint)
         self.supports_masking = True
         # setup model variables
         self.mean_weight = None
@@ -107,14 +111,16 @@ class GaussianGraphConvolution(Layer):
 
         self.mean_weight = self.add_weight(
             shape=(input_dim, self.units),
-            name='mean',
+            name='mean_weight',
             initializer=self.mean_initializer,
-            regularizer=self.mean_regularizer)
+            regularizer=self.mean_regularizer,
+            constraint=self.mean_constraint)
         self.variance_weight = self.add_weight(
             shape=(input_dim, self.units),
-            name='variance',
+            name='variance_weight',
             initializer=self.variance_initializer,
-            regularizer=self.variance_regularizer)
+            regularizer=self.variance_regularizer,
+            constraint=self.variance_constraint)
 
         self.built = True
 
