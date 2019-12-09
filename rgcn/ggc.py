@@ -203,7 +203,7 @@ class GaussianGraphConvolution(Layer):
             variance = K.dropout(variance, self.dropout)
         # sample from the distribution if the last layer
         if self.is_last:
-            dist = distributions.Normal(mean, variance)
+            dist = distributions.Normal(mean, K.sqrt(variance))
             return self.last_activation(dist.sample())
         return [mean, variance]
 

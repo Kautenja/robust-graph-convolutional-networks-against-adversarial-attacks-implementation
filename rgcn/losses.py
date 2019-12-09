@@ -24,7 +24,7 @@ def kl_reg(mean, variance, weight: float = 5e-4):
         the KL-divergence between normal distribution and model distribution
     """
     identity = distributions.Normal(K.zeros_like(mean), K.ones_like(mean))
-    model = distributions.Normal(mean, variance)
+    model = distributions.Normal(mean, K.sqrt(variance))
     return weight * distributions.kl_divergence(identity, model)
 
 
